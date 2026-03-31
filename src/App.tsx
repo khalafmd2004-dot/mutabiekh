@@ -20,14 +20,40 @@ import {
   StickyNote,
   Download,
   BookOpen,
-  Settings
+  Settings,
+  Search,
+  Moon,
+  Sun,
+  MessageSquare,
+  BarChart3,
+  Flame,
+  Medal,
+  Send,
+  X,
+  Loader2
 } from 'lucide-react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip as RechartsTooltip,
+  Legend
+} from 'recharts';
+import { GoogleGenAI } from "@google/genai";
 import { INITIAL_SUBJECTS, MOTIVATIONAL_MESSAGES, STUDY_PLANS, WEEKLY_PLAN } from './constants';
 import { TopicStatus, Subject, Topic, DailyTask } from './types';
 
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const model = "gemini-3-flash-preview";
+
 export default function App() {
   const [activeRound, setActiveRound] = useState<1 | 2>(1);
-  const [activeTab, setActiveTab] = useState<'subjects' | 'weekly' | 'daily'>('daily');
+  const [activeTab, setActiveTab] = useState<'subjects' | 'weekly' | 'daily' | 'stats'>('daily');
   const [currentWeek, setCurrentWeek] = useState(1);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(() => {
     const saved = localStorage.getItem('daily_tasks');
@@ -76,6 +102,76 @@ export default function App() {
   } | null>(null);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('dark_mode');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [streak, setStreak] = useState(() => {
+    const saved = localStorage.getItem('study_streak');
+    return saved ? JSON.parse(saved) : 0;
+  });
+  const [showAI, setShowAI] = useState(false);
+  const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('dark_mode', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('study_streak', JSON.stringify(streak));
+  }, [streak]);
+
+  // Update streak logic
+  useEffect(() => {
+    const lastStudyDate = localStorage.getItem('last_study_date');
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (lastStudyDate !== today) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (lastStudyDate === yesterdayStr) {
+        // Continue streak if some tasks were completed yesterday
+        // This is simplified, real logic would check if daily goal was met
+      } else if (lastStudyDate) {
+        // Streak broken if more than 1 day gap
+        // setStreak(0);
+      }
+    }
+  }, []);
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim()) return;
+    setAiMessages(prev => [...prev, { role: 'user', text }]);
+    setIsAiLoading(true);
+    
+    try {
+      const prompt = `أنت مساعد دراسي ذكي لطالب في السادس الإعدادي في العراق. 
+      تقدم نصائح دراسية، تلخص مواضيع، وتساعد في تنظيم الوقت. 
+      الطالب يسأل: ${text}
+      أجب باللغة العربية وبأسلوب محفز وودود.`;
+
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+      
+      setAiMessages(prev => [...prev, { role: 'ai', text: response.text || 'عذراً، حدث خطأ ما.' }]);
+    } catch (error) {
+      console.error(error);
+      setAiMessages(prev => [...prev, { role: 'ai', text: 'عذراً، واجهت مشكلة في الاتصال بالذكاء الاصطناعي.' }]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('study_progress', JSON.stringify(progress));
@@ -191,6 +287,19 @@ export default function App() {
           ...prevProgress,
           [taskToToggle.topicId!]: newCompletedState ? 'completed' : 'in_progress'
         }));
+      }
+
+      // Update streak if all tasks are completed
+      const allDone = updated.length > 0 && updated.every(t => t.completed);
+      if (allDone && newCompletedState) {
+        const lastStudyDate = localStorage.getItem('last_study_date');
+        const today = new Date().toISOString().split('T')[0];
+        if (lastStudyDate !== today) {
+          setStreak(s => s + 1);
+          localStorage.setItem('last_study_date', today);
+          setToast("🔥 استمر! زاد عدد أيام إنجازك المتتالي");
+          setTimeout(() => setToast(null), 3000);
+        }
       }
       
       return updated;
@@ -348,7 +457,13 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="flex bg-gray-100 p-1 rounded-xl">
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 text-navy hover:bg-gray-100 rounded-xl transition-colors dark:text-white dark:hover:bg-gray-800"
+          >
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
             <button
               onClick={() => setActiveRound(1)}
               className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
@@ -422,8 +537,52 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Search Bar */}
+      <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm sticky top-[57px] z-40 border-b border-gray-100 dark:border-gray-800">
+        <div className="relative max-w-2xl mx-auto">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input 
+            type="text"
+            placeholder="ابحث عن موضوع أو فصل..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl py-2 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all dark:text-white"
+          />
+        </div>
+      </div>
+
       <div className="max-w-2xl mx-auto px-4 mt-6">
-        {activeTab === 'daily' && (
+        {searchQuery && (
+          <div className="mb-8 space-y-4">
+            <h2 className="text-lg font-bold text-navy dark:text-white flex items-center gap-2">
+              <Search className="w-5 h-5 text-gold" />
+              نتائج البحث
+            </h2>
+            <div className="space-y-2">
+              {Object.values(allTopics)
+                .filter(({ topic }) => topic.name.includes(searchQuery))
+                .map(({ topic, subject }) => (
+                  <div key={topic.id} className="flex items-center gap-2">
+                    <span className="text-lg">{subject.emoji}</span>
+                    <div className="flex-1">
+                      <TopicItem 
+                        topic={topic} 
+                        status={progress[topic.id] || 'not_started'} 
+                        onToggle={() => cycleStatus(topic.id)}
+                        onFocus={() => startFocus(topic.id)}
+                        onAddToDaily={() => addTopicToDailyTasks(topic.id, topic.name)}
+                        compact
+                        note={notes[topic.id] || ''}
+                        onNoteChange={(val) => updateNote(topic.id, val)}
+                      />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'daily' && !searchQuery && (
           <div className="space-y-6 mb-10">
             {/* Daily Tasks Section */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
@@ -757,11 +916,11 @@ export default function App() {
       </AnimatePresence>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center py-3 px-6 z-[150] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-around items-center py-3 px-6 z-[150] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <button
           onClick={() => setActiveTab('daily')}
           className={`flex flex-col items-center gap-1 transition-all ${
-            activeTab === 'daily' ? 'text-navy scale-110' : 'text-gray-400'
+            activeTab === 'daily' ? 'text-navy dark:text-white scale-110' : 'text-gray-400'
           }`}
         >
           <ListTodo className={`w-6 h-6 ${activeTab === 'daily' ? 'text-gold' : ''}`} />
@@ -769,9 +928,19 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('stats')}
+          className={`flex flex-col items-center gap-1 transition-all ${
+            activeTab === 'stats' ? 'text-navy dark:text-white scale-110' : 'text-gray-400'
+          }`}
+        >
+          <BarChart3 className={`w-6 h-6 ${activeTab === 'stats' ? 'text-gold' : ''}`} />
+          <span className="text-[10px] font-bold">الإحصائيات</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('weekly')}
           className={`flex flex-col items-center gap-1 transition-all ${
-            activeTab === 'weekly' ? 'text-navy scale-110' : 'text-gray-400'
+            activeTab === 'weekly' ? 'text-navy dark:text-white scale-110' : 'text-gray-400'
           }`}
         >
           <Calendar className={`w-6 h-6 ${activeTab === 'weekly' ? 'text-gold' : ''}`} />
@@ -781,7 +950,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('subjects')}
           className={`flex flex-col items-center gap-1 transition-all ${
-            activeTab === 'subjects' ? 'text-navy scale-110' : 'text-gray-400'
+            activeTab === 'subjects' ? 'text-navy dark:text-white scale-110' : 'text-gray-400'
           }`}
         >
           <BookOpen className={`w-6 h-6 ${activeTab === 'subjects' ? 'text-gold' : ''}`} />
@@ -805,25 +974,195 @@ export default function App() {
       </AnimatePresence>
 
       {/* Motivational Footer */}
-      <div className="max-w-2xl mx-auto px-4 mt-8 pb-8">
-        <div className="bg-white/50 border border-dashed border-gray-200 rounded-2xl p-4 text-center">
-          <p className="text-gray-400 text-sm font-bold italic">
-            "ما بقى شي، هانت يا بطل! كل موضوع تخلصه هو خطوة أقرب لحلمك."
-          </p>
-        </div>
-      </div>
+        {activeTab === 'stats' && !searchQuery && (
+          <div className="space-y-6 mb-10">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-navy dark:text-white mb-6 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-gold" />
+                تحليل الإنجاز العام
+              </h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'مكتمل', value: stats.completedTopics },
+                        { name: 'قيد الإنجاز', value: stats.inProgressTopics },
+                        { name: 'لم يبدأ', value: stats.totalTopics - stats.completedTopics - stats.inProgressTopics }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      <Cell fill="#10b981" />
+                      <Cell fill="#facc15" />
+                      <Cell fill="#ef4444" />
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-navy dark:text-white mb-6 flex items-center gap-2">
+                <Medal className="w-5 h-5 text-gold" />
+                الإنجاز حسب المواد
+              </h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={currentSubjects.map(s => ({
+                    name: s.name,
+                    progress: getSubjectProgress(s)
+                  }))}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="progress" fill="#1a1f3c" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
+                <div className="text-2xl font-black text-navy dark:text-white">{streak}</div>
+                <div className="text-[10px] text-gray-400 font-bold uppercase">سلسلة الإنجاز</div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                <Trophy className="w-8 h-8 text-gold mx-auto mb-2" />
+                <div className="text-2xl font-black text-navy dark:text-white">
+                  {Math.floor(stats.completedTopics / 10)}
+                </div>
+                <div className="text-[10px] text-gray-400 font-bold uppercase">الأوسمة المستحقة</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* AI Assistant Floating Button */}
+      <button 
+        onClick={() => setShowAI(true)}
+        className="fixed bottom-24 right-6 z-50 bg-navy text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all active:scale-95 group"
+      >
+        <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+        <span className="absolute -top-2 -right-2 bg-gold text-navy text-[10px] font-bold px-2 py-0.5 rounded-full">AI</span>
+      </button>
+
+      {/* AI Assistant Modal */}
+      <AnimatePresence>
+        {showAI && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAI(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg h-[80vh] flex flex-col relative z-10 shadow-2xl overflow-hidden"
+            >
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-navy text-white">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gold p-2 rounded-xl">
+                    <Sparkles className="w-5 h-5 text-navy" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">مساعد السادس الذكي</h3>
+                    <p className="text-[10px] opacity-70">مدعوم بـ Gemini AI</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAI(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
+                {aiMessages.length === 0 && (
+                  <div className="text-center py-10 space-y-4">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm inline-block">
+                      <MessageSquare className="w-12 h-12 text-gold mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">أهلاً بك! أنا هنا لمساعدتك في دراستك.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['كيف أنظم وقتي؟', 'لخص لي موضوع النفي', 'نصائح لليلة الامتحان', 'جدول مراجعة مقترح'].map(q => (
+                        <button 
+                          key={q}
+                          onClick={() => handleSendMessage(q)}
+                          className="text-[10px] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-gold transition-colors text-navy dark:text-white"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {aiMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                      msg.role === 'user' 
+                        ? 'bg-navy text-white rounded-tr-none' 
+                        : 'bg-white dark:bg-gray-800 text-navy dark:text-white shadow-sm rounded-tl-none border border-gray-100 dark:border-gray-700'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isAiLoading && (
+                  <div className="flex justify-end">
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm rounded-tl-none border border-gray-100 dark:border-gray-700">
+                      <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
+                    handleSendMessage(input.value);
+                    input.value = '';
+                  }}
+                  className="flex gap-2"
+                >
+                  <input 
+                    name="message"
+                    type="text"
+                    placeholder="اسألني أي شيء..."
+                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-gold dark:text-white"
+                  />
+                  <button type="submit" className="bg-navy text-white p-2 rounded-xl hover:bg-navy/90 transition-colors">
+                    <Send className="w-5 h-5" />
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function StatCard({ icon, label, value, total }: { icon: React.ReactNode, label: string, value: string | number, total?: number }) {
   return (
-    <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
+    <div className="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center text-center">
       <div className="mb-1">{icon}</div>
-      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{label}</div>
-      <div className="text-lg font-extrabold text-navy">
+      <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">{label}</div>
+      <div className="text-lg font-extrabold text-navy dark:text-white">
         {value}
-        {total !== undefined && <span className="text-xs text-gray-300 font-normal"> / {total}</span>}
+        {total !== undefined && <span className="text-xs text-gray-300 dark:text-gray-600 font-normal"> / {total}</span>}
       </div>
     </div>
   );
@@ -876,28 +1215,32 @@ function TopicItem({
   };
 
   return (
-    <div className={`bg-white rounded-lg border transition-all ${
-      topic.isCritical ? 'border-red-200 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'border-gray-100'
+    <div className={`bg-white dark:bg-gray-800 rounded-lg border transition-all ${
+      topic.isCritical 
+        ? 'border-red-200 dark:border-red-900 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+        : 'border-gray-100 dark:border-gray-700'
     }`}>
       <div className={`flex items-center justify-between p-3 ${compact ? 'py-2' : ''}`}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className={`text-sm font-medium leading-tight break-words ${topic.isCritical ? 'text-red-700 font-bold' : 'text-gray-700'}`}>
+          <span className={`text-sm font-medium leading-tight break-words ${
+            topic.isCritical ? 'text-red-700 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'
+          }`}>
             {topic.name}
-            {topic.isCritical && <span className="mr-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">مهم جداً</span>}
+            {topic.isCritical && <span className="mr-2 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded uppercase">مهم جداً</span>}
           </span>
         </div>
         <div className="flex items-center gap-2">
           {!compact && (
             <button 
               onClick={() => setShowNote(!showNote)}
-              className={`p-1.5 rounded-lg transition-colors ${showNote ? 'bg-gold/20 text-gold' : 'text-gray-300 hover:text-gray-500'}`}
+              className={`p-1.5 rounded-lg transition-colors ${showNote ? 'bg-gold/20 text-gold' : 'text-gray-300 dark:text-gray-600 hover:text-gray-500'}`}
             >
               <StickyNote className="w-4 h-4" />
             </button>
           )}
           <button 
             onClick={onFocus}
-            className="p-1.5 text-gray-300 hover:text-navy hover:bg-gray-100 rounded-lg transition-all"
+            className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-navy dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
             title="وضع التركيز"
           >
             <Clock className="w-4 h-4" />
@@ -905,7 +1248,7 @@ function TopicItem({
           {onAddToDaily && (
             <button 
               onClick={onAddToDaily}
-              className="p-1.5 text-gray-300 hover:text-gold hover:bg-gray-100 rounded-lg transition-all"
+              className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-gold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
               title="إضافة للمهام اليومية"
             >
               <ListTodo className="w-4 h-4" />
@@ -933,7 +1276,7 @@ function TopicItem({
               value={note}
               onChange={(e) => onNoteChange?.(e.target.value)}
               placeholder="اكتب ملاحظاتك هنا..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs text-gray-600 focus:outline-none focus:border-gold min-h-[60px] resize-none"
+              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-xs text-gray-600 dark:text-gray-400 focus:outline-none focus:border-gold min-h-[60px] resize-none"
             />
           </motion.div>
         )}

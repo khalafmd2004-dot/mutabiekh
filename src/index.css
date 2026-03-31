@@ -5,15 +5,49 @@
   --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
   --color-navy: #1a1f3c;
   --color-gold: #f5c842;
+  
+  --color-dark-bg: #0f172a;
+  --color-dark-card: #1e293b;
+  --color-dark-border: #334155;
+  --color-dark-text: #f8fafc;
+  --color-dark-muted: #94a3b8;
 }
 
 @layer base {
   body {
-    @apply font-sans bg-linear-to-br from-[#f8f9fa] to-[#e9ecef] text-navy min-h-screen;
+    @apply font-sans bg-linear-to-br from-[#f8f9fa] to-[#e9ecef] text-navy min-h-screen transition-colors duration-300;
     direction: rtl;
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .dark body {
+    @apply from-[#0f172a] to-[#1e293b] text-[#f8fafc];
+  }
+
+  .dark .bg-white {
+    @apply bg-[#1e293b] border-[#334155];
+  }
+
+  .dark .text-navy {
+    @apply text-[#f8fafc];
+  }
+
+  .dark .text-gray-700 {
+    @apply text-[#e2e8f0];
+  }
+
+  .dark .text-gray-400 {
+    @apply text-[#94a3b8];
+  }
+
+  .dark .border-gray-100, .dark .border-gray-200 {
+    @apply border-[#334155];
+  }
+
+  .dark .bg-gray-50 {
+    @apply bg-[#0f172a];
   }
 }

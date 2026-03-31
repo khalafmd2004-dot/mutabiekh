@@ -9,7 +9,6 @@ import {
   Trophy, 
   Target, 
   Calendar,
-  Sparkles,
   Play,
   Pause,
   RotateCcw,
@@ -24,13 +23,10 @@ import {
   Search,
   Moon,
   Sun,
-  MessageSquare,
   BarChart3,
   Flame,
   Medal,
-  Send,
-  X,
-  Loader2
+  Sparkles
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -44,12 +40,8 @@ import {
   Tooltip as RechartsTooltip,
   Legend
 } from 'recharts';
-import { GoogleGenAI } from "@google/genai";
 import { INITIAL_SUBJECTS, MOTIVATIONAL_MESSAGES, STUDY_PLANS, WEEKLY_PLAN } from './constants';
 import { TopicStatus, Subject, Topic, DailyTask } from './types';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const model = "gemini-3-flash-preview";
 
 export default function App() {
   const [activeRound, setActiveRound] = useState<1 | 2>(1);
@@ -111,9 +103,6 @@ export default function App() {
     const saved = localStorage.getItem('study_streak');
     return saved ? JSON.parse(saved) : 0;
   });
-  const [showAI, setShowAI] = useState(false);
-  const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('dark_mode', JSON.stringify(isDarkMode));
@@ -147,31 +136,6 @@ export default function App() {
       }
     }
   }, []);
-
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return;
-    setAiMessages(prev => [...prev, { role: 'user', text }]);
-    setIsAiLoading(true);
-    
-    try {
-      const prompt = `أنت مساعد دراسي ذكي لطالب في السادس الإعدادي في العراق. 
-      تقدم نصائح دراسية، تلخص مواضيع، وتساعد في تنظيم الوقت. 
-      الطالب يسأل: ${text}
-      أجب باللغة العربية وبأسلوب محفز وودود.`;
-
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
-      
-      setAiMessages(prev => [...prev, { role: 'ai', text: response.text || 'عذراً، حدث خطأ ما.' }]);
-    } catch (error) {
-      console.error(error);
-      setAiMessages(prev => [...prev, { role: 'ai', text: 'عذراً، واجهت مشكلة في الاتصال بالذكاء الاصطناعي.' }]);
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
   useEffect(() => {
     localStorage.setItem('study_progress', JSON.stringify(progress));
@@ -1045,112 +1009,7 @@ export default function App() {
           </div>
         )}
 
-      {/* AI Assistant Floating Button */}
-      <button 
-        onClick={() => setShowAI(true)}
-        className="fixed bottom-24 right-6 z-50 bg-navy text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all active:scale-95 group"
-      >
-        <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-2 -right-2 bg-gold text-navy text-[10px] font-bold px-2 py-0.5 rounded-full">AI</span>
-      </button>
-
-      {/* AI Assistant Modal */}
-      <AnimatePresence>
-        {showAI && (
-          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAI(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg h-[80vh] flex flex-col relative z-10 shadow-2xl overflow-hidden"
-            >
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-navy text-white">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gold p-2 rounded-xl">
-                    <Sparkles className="w-5 h-5 text-navy" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold">مساعد السادس الذكي</h3>
-                    <p className="text-[10px] opacity-70">مدعوم بـ Gemini AI</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowAI(false)} className="p-2 hover:bg-white/10 rounded-lg">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
-                {aiMessages.length === 0 && (
-                  <div className="text-center py-10 space-y-4">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm inline-block">
-                      <MessageSquare className="w-12 h-12 text-gold mx-auto mb-2" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">أهلاً بك! أنا هنا لمساعدتك في دراستك.</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['كيف أنظم وقتي؟', 'لخص لي موضوع النفي', 'نصائح لليلة الامتحان', 'جدول مراجعة مقترح'].map(q => (
-                        <button 
-                          key={q}
-                          onClick={() => handleSendMessage(q)}
-                          className="text-[10px] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-gold transition-colors text-navy dark:text-white"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {aiMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                      msg.role === 'user' 
-                        ? 'bg-navy text-white rounded-tr-none' 
-                        : 'bg-white dark:bg-gray-800 text-navy dark:text-white shadow-sm rounded-tl-none border border-gray-100 dark:border-gray-700'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {isAiLoading && (
-                  <div className="flex justify-end">
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm rounded-tl-none border border-gray-100 dark:border-gray-700">
-                      <Loader2 className="w-4 h-4 animate-spin text-gold" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
-                    handleSendMessage(input.value);
-                    input.value = '';
-                  }}
-                  className="flex gap-2"
-                >
-                  <input 
-                    name="message"
-                    type="text"
-                    placeholder="اسألني أي شيء..."
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-gold dark:text-white"
-                  />
-                  <button type="submit" className="bg-navy text-white p-2 rounded-xl hover:bg-navy/90 transition-colors">
-                    <Send className="w-5 h-5" />
-                  </button>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Bottom Navigation */}
     </div>
   );
 }

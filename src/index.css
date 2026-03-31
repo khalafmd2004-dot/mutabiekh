@@ -9,7 +9,7 @@
 
 @layer base {
   body {
-    @apply font-sans bg-[#f8f9fa] text-navy;
+    @apply font-sans bg-linear-to-br from-[#f8f9fa] to-[#e9ecef] text-navy min-h-screen;
     direction: rtl;
     touch-action: manipulation;
     -webkit-user-select: none;

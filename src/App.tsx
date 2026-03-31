@@ -337,7 +337,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-24 font-sans" dir="rtl">
+    <div className="min-h-screen pb-24 font-sans" dir="rtl">
       {/* Mobile Header */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -648,12 +648,28 @@ export default function App() {
               <div className="absolute top-0 right-0 p-4 opacity-10">
                 <Sparkles className="w-12 h-12" />
               </div>
-              <h3 className="text-gold font-bold text-xl mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                الخطة الدراسية المقترحة
-              </h3>
-              <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-line">
-                {activeRound === 1 ? STUDY_PLANS.round1 : STUDY_PLANS.round2}
+              
+              <div className="relative z-10">
+                <h3 className="text-gold font-bold text-xl mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  الخطة الدراسية المقترحة
+                </h3>
+
+                <div className="mb-6 rounded-xl overflow-hidden border border-white/10 shadow-inner">
+                  <img 
+                    src={activeRound === 1 
+                      ? "https://picsum.photos/seed/study-plan-1/800/400?blur=1" 
+                      : "https://picsum.photos/seed/revision-plan-2/800/400?blur=1"
+                    }
+                    alt="Study Plan Illustration"
+                    className="w-full h-40 object-cover opacity-80 hover:opacity-100 transition-opacity duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+
+                <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-line">
+                  {activeRound === 1 ? STUDY_PLANS.round1 : STUDY_PLANS.round2}
+                </div>
               </div>
             </div>
           </div>

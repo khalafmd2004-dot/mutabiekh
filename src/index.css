@@ -11,5 +11,9 @@
   body {
     @apply font-sans bg-[#f8f9fa] text-navy;
     direction: rtl;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 }

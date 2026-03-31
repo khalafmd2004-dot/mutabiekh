@@ -26,6 +26,7 @@ export interface DailyTask {
   text: string;
   completed: boolean;
   createdAt: string;
+  topicId?: string;
 }
 
 export interface AppState {

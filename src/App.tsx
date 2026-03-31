@@ -155,10 +155,46 @@ export default function App() {
     setNewTaskText('');
   };
 
+  const addTopicToDailyTasks = (topicId: string, topicName: string) => {
+    // Check if it already exists and not completed
+    if (dailyTasks.some(t => t.topicId === topicId && !t.completed)) {
+      setToast('هذا الموضوع موجود بالفعل في مهامك اليومية');
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    
+    const newTask: DailyTask = {
+      id: Date.now().toString(),
+      text: topicName,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      topicId: topicId
+    };
+    setDailyTasks(prev => [newTask, ...prev]);
+    setToast('تمت إضافة الموضوع للمهام اليومية');
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const toggleDailyTask = (id: string) => {
-    setDailyTasks(prev => prev.map(task => 
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+    setDailyTasks(prev => {
+      const taskToToggle = prev.find(t => t.id === id);
+      if (!taskToToggle) return prev;
+
+      const newCompletedState = !taskToToggle.completed;
+      const updated = prev.map(task => 
+        task.id === id ? { ...task, completed: newCompletedState } : task
+      );
+      
+      if (taskToToggle.topicId) {
+        // Sync with progress
+        setProgress(prevProgress => ({
+          ...prevProgress,
+          [taskToToggle.topicId!]: newCompletedState ? 'completed' : 'in_progress'
+        }));
+      }
+      
+      return updated;
+    });
   };
 
   const deleteDailyTask = (id: string) => {
@@ -515,6 +551,7 @@ export default function App() {
                                   status={progress[topic.id] || 'not_started'} 
                                   onToggle={() => cycleStatus(topic.id)}
                                   onFocus={() => startFocus(topic.id)}
+                                  onAddToDaily={() => addTopicToDailyTasks(topic.id, topic.name)}
                                   note={notes[topic.id] || ''}
                                   onNoteChange={(val) => updateNote(topic.id, val)}
                                 />
@@ -593,6 +630,7 @@ export default function App() {
                             status={progress[topicId] || 'not_started'} 
                             onToggle={() => cycleStatus(topicId)}
                             onFocus={() => startFocus(topicId)}
+                            onAddToDaily={() => addTopicToDailyTasks(topicId, topic.name)}
                             compact
                             note={notes[topicId] || ''}
                             onNoteChange={(val) => updateNote(topicId, val)}
@@ -780,6 +818,7 @@ function TopicItem({
   status, 
   onToggle, 
   onFocus, 
+  onAddToDaily,
   compact = false,
   note = '',
   onNoteChange
@@ -788,6 +827,7 @@ function TopicItem({
   status: TopicStatus, 
   onToggle: () => void, 
   onFocus: () => void,
+  onAddToDaily?: () => void,
   compact?: boolean,
   note?: string,
   onNoteChange?: (val: string) => void,
@@ -846,6 +886,15 @@ function TopicItem({
           >
             <Clock className="w-4 h-4" />
           </button>
+          {onAddToDaily && (
+            <button 
+              onClick={onAddToDaily}
+              className="p-1.5 text-gray-300 hover:text-gold hover:bg-gray-100 rounded-lg transition-all"
+              title="إضافة للمهام اليومية"
+            >
+              <ListTodo className="w-4 h-4" />
+            </button>
+          )}
           <button 
             onClick={onToggle}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 border-b-2 shadow-sm ${getStatusColor()}`}

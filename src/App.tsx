@@ -27,7 +27,7 @@ import { TopicStatus, Subject, Topic, DailyTask } from './types';
 
 export default function App() {
   const [activeRound, setActiveRound] = useState<1 | 2>(1);
-  const [activeTab, setActiveTab] = useState<'subjects' | 'weekly'>('weekly');
+  const [activeTab, setActiveTab] = useState<'subjects' | 'weekly' | 'daily'>('daily');
   const [currentWeek, setCurrentWeek] = useState(1);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(() => {
     const saved = localStorage.getItem('daily_tasks');
@@ -387,90 +387,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="max-w-2xl mx-auto px-4 mt-6">
-        {activeTab === 'subjects' ? (
-          <>
-            {/* Subjects List */}
-            <div className="space-y-4 mb-10">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-navy">المواد الدراسية</h2>
-                <span className="text-xs font-bold text-gray-400">الدور {activeRound === 1 ? 'الأول' : 'الثاني'}</span>
-              </div>
-              {currentSubjects.map((subject) => (
-                <div key={subject.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                  <button 
-                    onClick={() => toggleSubject(subject.id)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{subject.emoji}</span>
-                      <div className="text-right">
-                        <h3 className="font-bold text-navy text-lg">{subject.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gold transition-all duration-500" 
-                              style={{ width: `${getSubjectProgress(subject)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-bold text-gray-500">{getSubjectProgress(subject)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                    {expandedSubjects[subject.id] ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-                  </button>
-
-                  <AnimatePresence>
-                    {expandedSubjects[subject.id] && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-gray-50 bg-gray-50/30"
-                      >
-                        <div className="p-4 space-y-6">
-                          {subject.chapters.map((chapter) => (
-                            <div key={chapter.id}>
-                              <h4 className="text-sm font-bold text-gray-400 mb-3 pr-2 border-r-2 border-gold/30">
-                                {chapter.name}
-                              </h4>
-                              <div className="space-y-2">
-                                {chapter.topics.map((topic) => (
-                                  <TopicItem 
-                                    key={topic.id} 
-                                    topic={topic} 
-                                    status={progress[topic.id] || 'not_started'} 
-                                    onToggle={() => cycleStatus(topic.id)}
-                                    onFocus={() => startFocus(topic.id)}
-                                    note={notes[topic.id] || ''}
-                                    onNoteChange={(val) => updateNote(topic.id, val)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </div>
-
-            {/* Study Plan */}
-            <div className="bg-navy text-white p-6 rounded-2xl shadow-xl relative overflow-hidden mb-10">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Sparkles className="w-12 h-12" />
-              </div>
-              <h3 className="text-gold font-bold text-xl mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                الخطة الدراسية المقترحة
-              </h3>
-              <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-line">
-                {activeRound === 1 ? STUDY_PLANS.round1 : STUDY_PLANS.round2}
-              </div>
-            </div>
-          </>
-        ) : (
+        {activeTab === 'daily' && (
           <div className="space-y-6 mb-10">
             {/* Daily Tasks Section */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
@@ -537,6 +454,85 @@ export default function App() {
               </div>
             </div>
 
+            {/* Motivational Card for Daily Tab */}
+            <div className="bg-gold/10 border border-gold/20 rounded-2xl p-6 text-center">
+              <Trophy className="w-10 h-10 text-gold mx-auto mb-3" />
+              <h3 className="text-navy font-bold text-lg mb-1">أنجز مهامك اليومية</h3>
+              <p className="text-navy/60 text-sm">كل مهمة تخلصها اليوم هي خطوة أقرب للنجاح في الوزاري.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'subjects' && (
+          <div className="space-y-4 mb-10">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-navy">المواد الدراسية</h2>
+              <span className="text-xs font-bold text-gray-400">الدور {activeRound === 1 ? 'الأول' : 'الثاني'}</span>
+            </div>
+            {currentSubjects.map((subject) => (
+              <div key={subject.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <button 
+                  onClick={() => toggleSubject(subject.id)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{subject.emoji}</span>
+                    <div className="text-right">
+                      <h3 className="font-bold text-navy text-lg">{subject.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gold transition-all duration-500" 
+                            style={{ width: `${getSubjectProgress(subject)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-gray-500">{getSubjectProgress(subject)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  {expandedSubjects[subject.id] ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
+                </button>
+
+                <AnimatePresence>
+                  {expandedSubjects[subject.id] && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-gray-50 bg-gray-50/30"
+                    >
+                      <div className="p-4 space-y-6">
+                        {subject.chapters.map((chapter) => (
+                          <div key={chapter.id}>
+                            <h4 className="text-sm font-bold text-gray-400 mb-3 pr-2 border-r-2 border-gold/30">
+                              {chapter.name}
+                            </h4>
+                            <div className="space-y-2">
+                              {chapter.topics.map((topic) => (
+                                <TopicItem 
+                                  key={topic.id} 
+                                  topic={topic} 
+                                  status={progress[topic.id] || 'not_started'} 
+                                  onToggle={() => cycleStatus(topic.id)}
+                                  onFocus={() => startFocus(topic.id)}
+                                  note={notes[topic.id] || ''}
+                                  onNoteChange={(val) => updateNote(topic.id, val)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'weekly' && (
+          <div className="space-y-6 mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-navy">الخطة الأسبوعية</h2>
               <div className="flex items-center gap-2">
@@ -608,22 +604,22 @@ export default function App() {
                 </div>
               </div>
             ))}
+
+            {/* Study Plan */}
+            <div className="bg-navy text-white p-6 rounded-2xl shadow-xl relative overflow-hidden mt-8">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Sparkles className="w-12 h-12" />
+              </div>
+              <h3 className="text-gold font-bold text-xl mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                الخطة الدراسية المقترحة
+              </h3>
+              <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-line">
+                {activeRound === 1 ? STUDY_PLANS.round1 : STUDY_PLANS.round2}
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Study Plan */}
-        <div className="bg-navy text-white p-6 rounded-2xl shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Sparkles className="w-12 h-12" />
-          </div>
-          <h3 className="text-gold font-bold text-xl mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            الخطة الدراسية المقترحة
-          </h3>
-          <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-line">
-            {activeRound === 1 ? STUDY_PLANS.round1 : STUDY_PLANS.round2}
-          </div>
-        </div>
       </div>
 
       {/* Focus Mode Overlay */}
@@ -709,12 +705,22 @@ export default function App() {
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center py-3 px-6 z-[150] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <button
+          onClick={() => setActiveTab('daily')}
+          className={`flex flex-col items-center gap-1 transition-all ${
+            activeTab === 'daily' ? 'text-navy scale-110' : 'text-gray-400'
+          }`}
+        >
+          <ListTodo className={`w-6 h-6 ${activeTab === 'daily' ? 'text-gold' : ''}`} />
+          <span className="text-[10px] font-bold">مهام اليوم</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('weekly')}
           className={`flex flex-col items-center gap-1 transition-all ${
             activeTab === 'weekly' ? 'text-navy scale-110' : 'text-gray-400'
           }`}
         >
-          <ListTodo className={`w-6 h-6 ${activeTab === 'weekly' ? 'text-gold' : ''}`} />
+          <Calendar className={`w-6 h-6 ${activeTab === 'weekly' ? 'text-gold' : ''}`} />
           <span className="text-[10px] font-bold">الخطة</span>
         </button>
         

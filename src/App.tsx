@@ -865,7 +865,7 @@ function TopicItem({
     }`}>
       <div className={`flex items-center justify-between p-3 ${compact ? 'py-2' : ''}`}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className={`text-sm font-medium truncate ${topic.isCritical ? 'text-red-700 font-bold' : 'text-gray-700'}`}>
+          <span className={`text-sm font-medium leading-tight break-words ${topic.isCritical ? 'text-red-700 font-bold' : 'text-gray-700'}`}>
             {topic.name}
             {topic.isCritical && <span className="mr-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">مهم جداً</span>}
           </span>

@@ -26,7 +26,8 @@ import {
   BarChart3,
   Flame,
   Medal,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -556,11 +557,23 @@ export default function App() {
                 </div>
                 <h3 className="font-bold text-navy text-lg">المهام اليومية</h3>
                 {dailyTasks.length > 0 && (
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden mx-4">
-                    <div 
-                      className="h-full bg-gold transition-all duration-500" 
-                      style={{ width: `${(dailyTasks.filter(t => t.completed).length / dailyTasks.length) * 100}%` }}
-                    />
+                  <div className="flex-1 flex items-center gap-4 mx-4">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gold transition-all duration-500" 
+                        style={{ width: `${(dailyTasks.filter(t => t.completed).length / dailyTasks.length) * 100}%` }}
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (window.confirm('هل أنت متأكد من حذف جميع المهام؟')) {
+                          setDailyTasks([]);
+                        }
+                      }}
+                      className="text-[10px] text-red-400 hover:text-red-600 font-bold whitespace-nowrap"
+                    >
+                      حذف الكل
+                    </button>
                   </div>
                 )}
               </div>
@@ -603,9 +616,10 @@ export default function App() {
                       </div>
                       <button
                         onClick={() => deleteDailyTask(task.id)}
-                        className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-90"
+                        title="حذف المهمة"
                       >
-                        <RotateCcw className="w-4 h-4 rotate-45" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))
